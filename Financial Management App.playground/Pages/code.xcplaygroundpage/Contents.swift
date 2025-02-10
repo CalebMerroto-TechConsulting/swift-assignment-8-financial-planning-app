@@ -1,6 +1,6 @@
 import UIKit
 
-
+// MARK: - Enums
 enum ERROR: Error {
     case transactionError(_ message: String)
     case insufficientFunds(_ message: String)
@@ -45,12 +45,12 @@ enum Transaction{
         case .deposit(let client, let amt, let account, let finalBalance, _):
             var msg = "Value of $\(amt) deposited into account: \(account) by \(client)."
             if let balance = finalBalance{
-                msg.append(" New balance: \(balance)")
+                msg.append(" - New balance: \(balance)")
             }
         case .withdraw(let client, let amt, let account, let finalBalance, _):
             var msg = "Value of $\(amt) withdrawn from account: \(account) by \(client)."
             if let balance = finalBalance{
-                msg.append(" New balance: \(balance)")
+                msg.append(" - New balance: \(balance)")
             }
         case .purchase(let client, let amt, _, let from, let fromType, let to, let toClient):
             return "\(client) made a purchase of $\(amt) from \(toClient) using \(fromType) account: \(from)"
@@ -87,13 +87,13 @@ enum Transaction{
         case .partial(let client, let amt, let remainder, let account, let type, let finalBalance):
             var msg = "\(client) attempted to withdraw $\(amt + remainder) from \(type) account: \(account), but only hit withdraw limit. \n - $\(amt) of $\(amt + remainder) withdrawn."
             if let balance = finalBalance{
-                msg.append("\n - New balance: $\(balance)")
+                msg.append(" - New balance: $\(balance)")
             }
             return msg
         case .failed(let message):
             return message.print()
         case .requestBalance(let client, let account, let type, let balance, _):
-            return "\(client) requested balance for \(type) account: \(account). \n - Current balance: $\(balance)"
+            return "\(client) requested balance for \(type) account: \(account) - Current balance: $\(balance)"
         case .spacer:
             return " "
         case .section(let header):
@@ -112,16 +112,8 @@ enum KeyPerms: Equatable {
     
      
 }
-func == (lhs: KeyPerms, rhs: KeyPerms) -> Bool {
-    switch (lhs, rhs) {
-    case (.full, _), (_, .full), (.admin, _), (_, .admin): // full or admin permissions always return true
-        return true
-    case (.deposit, .deposit), (.withdraw, .withdraw), (.view, .view):
-        return true
-    default:
-        return false
-    }
-}
+
+// MARK: - Helper Structs
 
 struct AccessKey: Equatable {
     let key: String
@@ -132,18 +124,12 @@ struct AccessKey: Equatable {
         self.perms = perms
     }
 }
-func == (_ lhs: AccessKey, _ rhs: AccessKey) -> Bool {
-    lhs.key == rhs.key
-}
+
+// MARK: - Protocols
 
 protocol Flaggable {
     var flags: [String:Double?] { get }
     func hasFlag(_ flag: String) -> Bool
-}
-extension Flaggable {
-    func hasFlag(_ flag: String) -> Bool {
-        return flags[flag] != nil
-    }
 }
 
 protocol Account: AnyObject, Flaggable {
@@ -162,10 +148,16 @@ protocol Account: AnyObject, Flaggable {
     func interestCalc() -> Transaction
     
 }
+
+// MARK: - Extensions
+
+extension Flaggable {
+    func hasFlag(_ flag: String) -> Bool {
+        return flags[flag] != nil
+    }
+}
+
 extension Account {
-    
-    
-    /// **Default Verify**
     func verify(_ givenKey: String?, _ acc: String,_ requestedPerm: KeyPerms) -> Bool{
         if acc != accountNumber { return false }
         if let key = givenKey {
@@ -175,8 +167,6 @@ extension Account {
         }
         return false
     }
-    
-    
     func transact(_ transaction: Transaction) -> Transaction {
         switch transaction {
         case .deposit(let client, let amt, let acc, _, let givenKey):
@@ -260,13 +250,15 @@ extension Account {
         }
         return Transaction.failed(ERROR.systemError("Invalid Transaction"))
     }
-    
     func interestCalc() -> Transaction{
         var interest: Double = balance * interestRate
         balance += interest
         return Transaction.interest(type, owners[0], accountNumber, interest)
     }
 }
+
+// MARK: - Operators
+
 func ==(lhs: any Account, rhs: any Account) -> Bool {
     return lhs.accountNumber == rhs.accountNumber
 }
@@ -277,27 +269,22 @@ func ==(lhs: String, rhs: any Account) -> Bool {
     return lhs == rhs.accountNumber
 }
 
+func == (_ lhs: AccessKey, _ rhs: AccessKey) -> Bool {
+    lhs.key == rhs.key
+}
 
-class Stack<T> {
-    var items: [T]
-    var count: Int { return items.count }
-    
-    
-    init(_ items: [T] = []) {
-        self.items = items
-    }
-    
-    func push(_ item: T) {
-        items.append(item)
-    }
-    func pop() -> T? {
-        return items.popLast()
-    }
-    
-    subscript(index: Int) -> T {
-        return items[index]
+func == (lhs: KeyPerms, rhs: KeyPerms) -> Bool {
+    switch (lhs, rhs) {
+    case (.full, _), (_, .full), (.admin, _), (_, .admin): // full or admin permissions always return true
+        return true
+    case (.deposit, .deposit), (.withdraw, .withdraw), (.view, .view):
+        return true
+    default:
+        return false
     }
 }
+
+// MARK: - Account Types
 
 class SavingsAccount: Account {
     var owners: [String] = []
@@ -358,6 +345,29 @@ class BillingAccount: Account{
         self.accountNumber = accountNumber
         self.interestRate = interestRate
         accessKeys[accessKey.key] = accessKey
+    }
+}
+
+// MARK: - Main Classes
+
+class Stack<T> {
+    var items: [T]
+    var count: Int { return items.count }
+    
+    
+    init(_ items: [T] = []) {
+        self.items = items
+    }
+    
+    func push(_ item: T) {
+        items.append(item)
+    }
+    func pop() -> T? {
+        return items.popLast()
+    }
+    
+    subscript(index: Int) -> T {
+        return items[index]
     }
 }
 
@@ -735,7 +745,7 @@ class Bank {
     
 }
 
-
+// MARK: - Test Cases
 var bank = Bank()
 bank.addSection("Creating Accounts")
 let checking1 = bank.CreateChecking("John Doe", balance: 1000, interestRate: 0.04, overdraftFee: 5.50)
